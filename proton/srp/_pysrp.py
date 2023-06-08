@@ -13,8 +13,7 @@
 # x    Private key (derived from p and s)
 # v    Password verifier
 from .pmhash import pmhash
-from .util import (PM_VERSION, SRP_LEN_BYTES, SALT_LEN_BYTES, bytes_to_long, custom_hash,
-                   get_random_of_length, hash_password, long_to_bytes)
+from .util import (PM_VERSION, SRP_LEN_BYTES, SALT_LEN_BYTES, bytes_to_long, custom_hash, get_random_of_length, hash_password, long_to_bytes)
 
 
 def get_ng(n_bin, g_hex):
@@ -29,9 +28,7 @@ def hash_k(hash_class, g, modulus, width):
 
 
 def calculate_x(hash_class, salt, password, modulus, version):
-    exp = hash_password(
-        hash_class, password, salt, long_to_bytes(modulus, SRP_LEN_BYTES), version
-    )
+    exp = hash_password(hash_class, password, salt, long_to_bytes(modulus, SRP_LEN_BYTES), version)
     return bytes_to_long(exp)
 
 
@@ -61,20 +58,11 @@ class User(object):
 
         self.N, self.g = get_ng(n_bin, g_hex)
         self.hash_class = pmhash
-        self.k = hash_k(
-            self.hash_class, self.g,
-            self.N, SRP_LEN_BYTES
-        )
+        self.k = hash_k(self.hash_class, self.g, self.N, SRP_LEN_BYTES)
 
         self.p = password.encode()
-        if bytes_a:
-            self.a = bytes_to_long(bytes_a)
-        else:
-            self.a = get_random_of_length(32)
-        if bytes_A:
-            self.A = bytes_to_long(bytes_A)
-        else:
-            self.A = pow(self.g, self.a, self.N)
+        self.a = bytes_to_long(bytes_a) if bytes_a else get_random_of_length(32)
+        self.A = bytes_to_long(bytes_A) if bytes_A else pow(self.g, self.a, self.N)
         self.v = None
         self.M = None
         self.K = None
@@ -116,18 +104,11 @@ class User(object):
             return None
 
         self.x = calculate_x(self.hash_class, self.bytes_s, self.p, self.N, version)
-
         self.v = pow(self.g, self.x, self.N)
-
-        self.S = pow(
-            (self.B - self.k * self.v), (self.a + self.u * self.x), self.N
-        )
-
+        self.S = pow((self.B - self.k * self.v), (self.a + self.u * self.x), self.N)
         self.K = long_to_bytes(self.S, SRP_LEN_BYTES)
         self.M = calculate_client_proof(self.hash_class, self.A, self.B, self.K) # noqa
-        self.expected_server_proof = calculate_server_proof(
-            self.hash_class, self.A, self.M, self.K
-        )
+        self.expected_server_proof = calculate_server_proof(self.hash_class, self.A, self.M, self.K)
 
         return self.M
 
@@ -138,5 +119,4 @@ class User(object):
     def compute_v(self, bytes_s=None, version=PM_VERSION):
         self.bytes_s = long_to_bytes(get_random_of_length(SALT_LEN_BYTES), SALT_LEN_BYTES) if bytes_s is None else bytes_s # noqa
         self.x = calculate_x(self.hash_class, self.bytes_s, self.p, self.N, version)
-
         return self.bytes_s, long_to_bytes(pow(self.g, self.x, self.N), SRP_LEN_BYTES) # noqa

@@ -197,10 +197,7 @@ class Session:
         fct = self.s.post
 
         if method is None:
-            if jsondata is None:
-                fct = self.s.get
-            else:
-                fct = self.s.post
+            fct = self.s.get if jsondata is None else self.s.post
         else:
             fct = {
                 "get": self.s.get,
